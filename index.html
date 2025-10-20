@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>2048 – Study Version</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <link href="style/main.css" rel="stylesheet" type="text/css" />
+  <link rel="shortcut icon" href="favicon.ico" />
+</head>
+<body>
+  <div class="container">
+    <div class="heading">
+      <h1 class="title">2048</h1>
+      <div class="scores-container">
+        <div class="score-container">0</div>
+        <div class="best-container">0</div>
+      </div>
+    </div>
+
+    <div class="above-game">
+      <p class="game-intro">Join the numbers and get to the <strong>2048 tile!</strong></p>
+      <!-- The original game had a New Game button here -->
+      <a class="restart-button">New Game</a>
+    </div>
+
+    <div class="game-container">
+      <div class="game-message">
+        <p></p>
+        <div class="lower">
+          <a class="keep-playing-button">Keep going</a>
+          <a class="retry-button">Try again</a>
+        </div>
+      </div>
+
+      <div class="grid-container">
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+        </div>
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+        </div>
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+        </div>
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+        </div>
+      </div>
+
+      <div class="tile-container"></div>
+    </div>
+
+    <p class="game-explanation">
+      <strong class="important">How to play:</strong> Use your <strong>arrow keys</strong> to move the tiles.
+      When two tiles with the same number touch, they <strong>merge into one!</strong>
+    </p>
+
+    <hr />
+
+    <p>
+      <strong>Study version:</strong> this game runs multiple blocks automatically
+      (rest, easy, normal, hard, oddball, and psychological tests).  
+      Data are logged locally as CSV.
+    </p>
+
+    <hr />
+
+    <p>
+      Original 2048 by <a href="https://github.com/gabrielecirulli/2048" target="_blank">Gabriele Cirulli</a>.
+      Modified for research.
+    </p>
+  </div>
+
+  <!-- Core game scripts (from the repo) -->
+  <script src="js/bind_polyfill.js"></script>
+  <script src="js/classlist_polyfill.js"></script>
+  <script src="js/animframe_polyfill.js"></script>
+
+  <script src="js/keyboard_input_manager.js"></script>
+  <script src="js/html_actuator.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/tile.js"></script>
+  <script src="js/local_storage_manager.js"></script>
+  <script src="js/game_manager.js"></script>
+
+<meta http-equiv="Cache-Control" content="no-store" />
+<script src="js/logger.js?v=3002" defer></script>
+<script src="js/tests.js?v=3002" defer></script>
+<script src="js/study_runner.js?v=2913" defer></script>
+
+
+  <!-- 🧠 Study Add-ons -->
+  <div id="study-overlay"
+       style="position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.55);z-index:9999;color:#fff;">
+    <div id="study-box"
+         style="background:#0b1220;border:1px solid #1f2937;border-radius:14px;padding:22px;max-width:640px;text-align:center;">
+      <h3 id="study-title" style="margin:0 0 8px;">—</h3>
+      <div id="study-body">—</div>
+    </div>
+  </div>
+
+
+
+
+
+
+</body>
+</html>

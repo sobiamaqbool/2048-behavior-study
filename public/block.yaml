@@ -1,0 +1,174 @@
+meta:
+  study_id: "MPhil-2048-v1"
+  version: "1.1.0"
+
+global:
+  board_size: 4
+  spawn_rates: {"2": 0.9, "4": 0.1}   # default; blocks can override
+  autosave_every_ms: 5000
+
+blocks:
+
+  # ——— Baseline (neutral) ———
+  - id: "baseline_rest"
+    type: "rest"
+    description: "Neutral screen"
+    stop: { kind: "time", value: 10 }
+    ui:
+      palette: "neutral"
+      show_message: "Relax. Baseline recording."
+
+  - id: "easy_mode"
+    type: "play"
+    description: "Warm-up round"
+    board_size: 4
+    goal_tile: 128
+    start_state:
+     classic: true
+    rules:
+     undo_allowed: true
+     hints: true
+    spawn:
+     rates: {"2": 0.9, "4": 0.1}
+    ui:
+     palette: "soft"
+     feedback: ["Nice start!", "Keep going!"]
+     animation_speed: "slow"
+    audio:
+     music: "tempo_easy"
+     sfx: "subtle_particles"
+
+
+  - id: "tests_after_easy"
+    type: "tests"
+    tests: ["TLX","SAM","Stroop"]
+    tests_options:
+      TLX:
+        omit_dimensions: ["temporal_demand"]
+
+
+
+   # ——— Medium Mode ———
+  - id: "medium_mode"
+    type: "play"
+    description: "Balanced challenge — (2-minute timer)"
+    board_size: 4
+    goal_tile: 512
+    start_state:
+    classic: true
+    rules:
+      undo_allowed: false
+      hints: false
+    stop:
+      kind: "time"
+      value: 120                   # 2 minutes
+    timer:
+      hard_cap_sec: 120
+      show_countdown: true         # show countdown only here
+    spawn:
+      rates: {"2": 0.9, "4": 0.1}
+    ui:
+      palette: "bright_contrast"
+      feedback: ["Good strategy!", "Smart combo!"]
+      animation_speed: "medium"
+    audio:
+      music: "tempo_medium"
+      sfx: "subtle_particles"
+
+
+
+  # ——— Tests after Medium ———
+  - id: "tests_after_medium"
+    type: "tests"
+    tests: ["TLX","SAM","Stroop"]
+
+  # ——— Hard Mode ———
+  - id: "hard_mode"
+    type: "play"
+    description: "Intense challenge — dense board, 1-minute timer"
+    board_size: 4
+    goal_tile: 1024
+    start_state:
+      classic: false
+      prefill:
+       fill_ratio: 0.50               # 50% of board filled at start
+       values: {"4": 0.30, "8": 0.25, "16": 0.25, "32": 0.20}
+    rules:
+      undo_allowed: false
+      hints: false
+    stop:
+      kind: "time"
+      value: 60                        # 1 minute (60 seconds)
+    timer:
+      hard_cap_sec: 60
+      show_countdown: true
+    spawn:
+      rates: {"4": 0.30, "8": 0.25, "16": 0.25, "32": 0.20}
+    ui:
+      palette: "high_contrast"
+      feedback: ["Focus!", "Fast moves!", "Good merge!", "Stay sharp!"]
+      animation_speed: "fast"
+    audio:
+      music: "tempo_hard"
+      sfx: "crisp"
+
+
+              # requires sfx hook
+
+  # ——— Tests after Hard ———
+  - id: "tests_after_hard"
+    type: "tests"
+    tests: ["TLX","SAM","Stroop"]
+
+  # ——— Oddball Mode ———
+  - id: "oddball_mode"
+    type: "play"
+    description: "Oddball task — detect and react to unexpected tiles"
+    board_size: 4
+    goal_tile: 512
+    start_state:
+      classic: true
+    rules:
+      undo_allowed: false
+      hints: false
+      oddball:
+       enabled: true
+       value: 3              # the rare oddball tile
+       force_every: 6        # every 6th spawn forces an oddball
+    stop:
+      kind: "time"
+      value: 90               # run for 90 seconds
+    timer:
+      hard_cap_sec: 90
+      show_countdown: true
+    spawn:
+      rates: {"2": 0.75, "4": 0.15, "3": 0.10}  # occasional oddballs
+    ui:
+      palette: "bright_contrast"
+      feedback: ["Odd one!", "Caught it!", "Good reaction!", "Stay alert!"]
+      animation_speed: "medium"
+    audio:
+      music: "tempo_medium"
+      sfx: "subtle_particles"
+
+        # ——— Tests after Oddball ———
+  - id: "tests_after_oddball"
+    type: "tests"
+    tests: ["TLX", "SAM", "Stroop"]
+
+
+
+sequence:
+  - baseline_rest
+  - easy_mode
+  - tests_after_easy
+  - medium_mode
+  - tests_after_medium
+  - hard_mode
+  - tests_after_hard
+  - oddball_mode
+  - tests_after_oddball
+
+output:
+  autosave_csv_on_block_end: true
+  filename_pattern: "{study_id}__{block_id}__{ts}.csv"
