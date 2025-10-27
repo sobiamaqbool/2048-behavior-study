@@ -103,7 +103,7 @@ blocks:
       hard_cap_sec: 60
       show_countdown: true
     spawn:
-      rates: {"4": 0.30, "8": 0.25, "16": 0.25, "32": 0.20}
+      rates: {"2": 0.30, "4":0.25, "8": 0.25, "32": 0.20}
     ui:
       palette: "high_contrast"
       feedback: ["Focus!", "Fast moves!", "Good merge!", "Stay sharp!"]
@@ -121,35 +121,42 @@ blocks:
     tests: ["TLX","SAM","Stroop"]
 
   # ——— Oddball Mode ———
+# ——— Oddball Mode ———
   - id: "oddball_mode"
     type: "play"
-    description: "Oddball task — detect and react to unexpected tiles"
+    description: "Oddball task — visual attention test"
     board_size: 4
     goal_tile: 512
     start_state:
       classic: true
-    rules:
-      undo_allowed: false
-      hints: false
-      oddball:
-       enabled: true
-       value: 3              # the rare oddball tile
-       force_every: 6        # every 6th spawn forces an oddball
     stop:
       kind: "time"
-      value: 90               # run for 90 seconds
+      value: 90
     timer:
       hard_cap_sec: 90
       show_countdown: true
     spawn:
-      rates: {"2": 0.75, "4": 0.15, "3": 0.10}  # occasional oddballs
+      rates: {"2": 0.9, "4": 0.1}   # normal spawn
     ui:
       palette: "bright_contrast"
-      feedback: ["Odd one!", "Caught it!", "Good reaction!", "Stay alert!"]
+      feedback: ["Focus!", "Stay alert!", "Good catch!"]
       animation_speed: "medium"
     audio:
       music: "tempo_medium"
       sfx: "subtle_particles"
+    post_questions:
+    - type: "single"
+      id: "saw_flash"
+      text: "Did you notice the flashes?"
+      options: ["Yes", "No"]
+    - type: "scale"
+      id: "flash_count"
+      text: "How many flashes did you see?"
+      min: 0
+      max: 2
+      labels: ["0","1","2"]
+
+
 
         # ——— Tests after Oddball ———
   - id: "tests_after_oddball"
