@@ -1,6 +1,6 @@
-// v3.3 — minimal move logs + tests router via log()
+// v3.4 — minimal move logs + tests router + context getter
 window.StudyLogger = (() => {
-  console.info("StudyLogger v3.3");
+  console.info("StudyLogger v3.4");
 
   // ---- ids
   const getOrMakeAnonId = () => {
@@ -44,6 +44,7 @@ window.StudyLogger = (() => {
   // ---- context
   function setContext(partial = {}) { context = { ...context, ...partial }; }
   function newSession(mode_id) { context.session_id = newSessionId(); if (mode_id) context.mode_id = mode_id; }
+  function getContext() { return { ...context }; } // NEW
 
   // ---- moves
   function normalizeMove(obj) {
@@ -80,7 +81,6 @@ window.StudyLogger = (() => {
   // ---- compatibility: route TestsUI logs into tests CSV
   // Many UIs call: StudyLogger.log(event, key, value, extra)
   function log(event, key, value, extra = {}) {
-    // Detect “test-like” logs and store as tests.
     const e = String(event ?? "");
     const k = String(key ?? "");
 
@@ -98,8 +98,7 @@ window.StudyLogger = (() => {
       logTest(test_block_id, item_id, item_type, response);
       return;
     }
-
-    // Ignore everything else to keep minimal schema.
+    // Ignore non-test events to keep schema minimal.
   }
 
   // ---- export
@@ -125,14 +124,14 @@ window.StudyLogger = (() => {
 
   return {
     // context
-    setContext, newSession,
+    setContext, newSession, getContext, // getContext exported
     // moves
     logMove, moveRowsForExport, toCSVMoves,
     // tests
     logTest, testRowsForExport, toCSVTests,
     // utils
     download,
-    // compatibility (now routes tests)
+    // compatibility
     log
   };
 })();
