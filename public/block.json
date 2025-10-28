@@ -1,23 +1,13 @@
 {
-  "meta": {
-    "study_id": "MPhil-2048-v1",
-    "version": "1.1.0"
-  },
-  "global": {
-    "board_size": 4,
-    "spawn_rates": { "2": 0.9, "4": 0.1 },
-    "autosave_every_ms": 5000
-  },
+  "meta": { "study_id": "MPhil-2048-v1", "version": "1.1.1" },
+  "global": { "board_size": 4, "spawn_rates": { "2": 0.9, "4": 0.1 }, "autosave_every_ms": 5000 },
   "blocks": [
     {
       "id": "baseline_rest",
       "type": "rest",
       "description": "Neutral screen",
       "stop": { "kind": "time", "value": 10 },
-      "ui": {
-        "palette": "neutral",
-        "show_message": "Relax. Baseline recording."
-      }
+      "ui": { "palette": "neutral", "show_message": "Relax. Baseline recording." }
     },
     {
       "id": "easy_mode",
@@ -28,37 +18,27 @@
       "start_state": { "classic": true },
       "rules": { "undo_allowed": true, "hints": true },
       "spawn": { "rates": { "2": 0.9, "4": 0.1 } },
-      "ui": {
-        "palette": "soft",
-        "feedback": ["Nice start!", "Keep going!"],
-        "animation_speed": "slow"
-      },
+      "ui": { "palette": "soft", "feedback": ["Nice start!", "Keep going!"], "animation_speed": "slow" },
       "audio": { "music": "tempo_easy", "sfx": "subtle_particles" }
     },
     {
       "id": "tests_after_easy",
       "type": "tests",
       "tests": ["TLX", "SAM", "Stroop"],
-      "tests_options": {
-        "TLX": { "omit_dimensions": ["temporal_demand"] }
-      }
+      "tests_options": { "TLX": { "omit_dimensions": ["temporal_demand"] } }
     },
     {
       "id": "medium_mode",
       "type": "play",
-      "description": "Balanced challenge — (2-minute timer)",
+      "description": "Balanced challenge — 1:30 timer",
       "board_size": 4,
-      "goal_tile": 512,
+      "goal_tile": 256,
       "start_state": { "classic": true },
       "rules": { "undo_allowed": false, "hints": false },
-      "stop": { "kind": "time", "value": 120 },
-      "timer": { "hard_cap_sec": 120, "show_countdown": true },
+      "stop": { "kind": "time", "value": 90 },
+      "timer": { "hard_cap_sec": 90, "show_countdown": true },
       "spawn": { "rates": { "2": 0.9, "4": 0.1 } },
-      "ui": {
-        "palette": "bright_contrast",
-        "feedback": ["Good strategy!", "Smart combo!"],
-        "animation_speed": "medium"
-      },
+      "ui": { "palette": "bright_contrast", "feedback": ["Good strategy!", "Smart combo!"], "animation_speed": "medium" },
       "audio": { "music": "tempo_medium", "sfx": "subtle_particles" }
     },
     {
@@ -69,25 +49,18 @@
     {
       "id": "hard_mode",
       "type": "play",
-      "description": "Intense challenge — dense board, 1-minute timer",
+      "description": "Intense challenge — 35% prefilled; bias spawns to 2",
       "board_size": 4,
       "goal_tile": 1024,
       "start_state": {
         "classic": false,
-        "prefill": {
-          "fill_ratio": 0.5,
-          "values": { "4": 0.3, "8": 0.25, "16": 0.25, "32": 0.2 }
-        }
+        "prefill": { "fill_ratio": 0.35, "values": { "2": 0.60, "4": 0.25, "8": 0.10, "16": 0.05 } }
       },
       "rules": { "undo_allowed": false, "hints": false },
       "stop": { "kind": "time", "value": 60 },
       "timer": { "hard_cap_sec": 60, "show_countdown": true },
-      "spawn": { "rates": { "2": 0.3, "4": 0.25, "8": 0.25, "32": 0.2 } },
-      "ui": {
-        "palette": "high_contrast",
-        "feedback": ["Focus!", "Fast moves!", "Good merge!", "Stay sharp!"],
-        "animation_speed": "fast"
-      },
+      "spawn": { "rates": { "2": 0.95, "4": 0.05 } },
+      "ui": { "palette": "high_contrast", "feedback": ["Focus!", "Fast moves!", "Good merge!", "Stay sharp!"], "animation_speed": "fast" },
       "audio": { "music": "tempo_hard", "sfx": "crisp" }
     },
     {
@@ -105,11 +78,7 @@
       "stop": { "kind": "time", "value": 90 },
       "timer": { "hard_cap_sec": 90, "show_countdown": true },
       "spawn": { "rates": { "2": 0.9, "4": 0.1 } },
-      "ui": {
-        "palette": "bright_contrast",
-        "feedback": ["Focus!", "Stay alert!", "Good catch!"],
-        "animation_speed": "medium"
-      },
+      "ui": { "palette": "bright_contrast", "feedback": ["Focus!", "Stay alert!", "Good catch!"], "animation_speed": "medium" },
       "audio": { "music": "tempo_medium", "sfx": "subtle_particles" },
       "post_questions": [
         { "type": "single", "id": "saw_flash", "text": "Did you notice the flashes?", "options": ["Yes", "No"] },
@@ -133,8 +102,5 @@
     "oddball_mode",
     "tests_after_oddball"
   ],
-  "output": {
-    "autosave_csv_on_block_end": true,
-    "filename_pattern": "{study_id}__{block_id}__{ts}.csv"
-  }
+  "output": { "autosave_csv_on_block_end": true, "filename_pattern": "{study_id}__{block_id}__{ts}.csv" }
 }
