@@ -45,15 +45,17 @@ document.addEventListener("DOMContentLoaded", () => {
 /* Button-style goal badge under the intro line */
 #goal-badge {
   display: none;
-  background: #8C7B68;   /*  color */
+  background: #8C7B68;   /* your color */
   color: #ffffff;        /* white text */
   border: none;
   border-radius: 10px;
   padding: 8px 16px;
   font: 700 15px/1.2 system-ui;
   box-shadow: 0 3px 8px rgba(0,0,0,.25);
+  margin-top: 10px;
+  clear: both;           
+  width: max-content;    /* shrink to text */
   cursor: default;
-  margin-top: 10px;      /* space below the intro line */
 }
   `;
   document.head.appendChild(s);
