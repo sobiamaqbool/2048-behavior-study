@@ -78,28 +78,27 @@ blocks:
     tests: ["TLX","SAM","Stroop"]
 
   # ——— Hard Mode ———
-  - id: "hard_mode"
+    - id: "hard_mode"
     type: "play"
-    description: "Intense challenge — 35% prefilled; bias spawns to 2"
+    description: "Challenge — dense board, 1-minute timer"
     board_size: 4
     goal_tile: 1024
     start_state:
       classic: false
       prefill:
-        fill_ratio: 0.35               # CHANGED
-        # Include 2s and 4s mostly; keep some higher tiles for variety
-        values: {"2": 0.60, "4": 0.25, "8": 0.10, "16": 0.05}
+        fill_ratio: 0.50            # keep same
+        values: {"64": 0.45, "32": 0.35, "16": 0.20}   # high tiles only
     rules:
       undo_allowed: false
       hints: false
     stop:
       kind: "time"
-      value: 60                         # keep 1 minute
+      value: 60
     timer:
       hard_cap_sec: 60
       show_countdown: true
     spawn:
-      rates: {"2": 0.95, "4": 0.05}     # CHANGED: more 2s
+      rates: {"2": 0.80, "4": 0.15, "8": 0.05}         # higher 2 spawn
     ui:
       palette: "high_contrast"
       feedback: ["Focus!", "Fast moves!", "Good merge!", "Stay sharp!"]
@@ -107,6 +106,7 @@ blocks:
     audio:
       music: "tempo_hard"
       sfx: "crisp"
+
 
   # ——— Tests after Hard ———
   - id: "tests_after_hard"
