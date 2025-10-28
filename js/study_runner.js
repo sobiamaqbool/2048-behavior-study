@@ -43,14 +43,20 @@ document.addEventListener("DOMContentLoaded", () => {
       box-shadow: 0 6px 18px rgba(0,0,0,.35); display: none;
     }
     /* Persistent goal badge */
-    #goal-badge {
-      position: fixed; top: 14px; left: 14px; z-index: 10000;
-      background: #0f172a; color: #e5e7eb;
-      border: 1px solid #334155; border-radius: 10px;
-      padding: 6px 10px; font: 700 13px/1.25 system-ui;
-      box-shadow: 0 6px 18px rgba(0,0,0,.35);
-      display: none;
-    }
+    #goal-badge  {
+     position: absolute;
+     top: 110px; /* just below score area */
+     left: 50%;
+     transform: translateX(-50%);
+     background: #edc22e; /* 2048 tile gold tone */
+     color: #776e65;      /* dark text */
+     border-radius: 8px;
+     padding: 6px 14px;
+     font: 700 15px/1.3 system-ui;
+     box-shadow: 0 2px 6px rgba(0,0,0,.25);
+     z-index: 2000;
+     display: none;
+}
   `;
   document.head.appendChild(s);
 });
