@@ -1,5 +1,5 @@
-// study_runner.js — v=2971 (goal left / timer right on grid; fixed StorageManager)
-console.log("study_runner loaded v=2972");
+// study_runner.js — v=2973 (fix: askPostQuestions + goal left / timer right)
+console.log("study_runner loaded v=2973");
 
 document.addEventListener("DOMContentLoaded", () => {
   const s = document.createElement("style");
@@ -23,29 +23,20 @@ document.addEventListener("DOMContentLoaded", () => {
     #study-body  { font:800 26px/1.25 system-ui; opacity:.98; margin-top:8px; }
 
     /* HUD anchors just above the grid */
-    .grid-hud {
-      position: relative;
-      height: 0;           /* sits on its line, no layout shift */
-    }
+    .grid-hud { position: relative; height: 0; }
     #goal-badge, #timer-badge {
-      position: absolute;
-      top: -40px;          /* floats above the grid frame */
-      background: #8C7B68;
-      color: #ffffff;
-      border: none;
-      border-radius: 10px;
-      padding: 8px 16px;
-      font: 700 15px/1.2 system-ui;
+      position: absolute; top: -40px;
+      background: #8C7B68; color: #fff;
+      border: none; border-radius: 10px;
+      padding: 8px 16px; font: 700 15px/1.2 system-ui;
       box-shadow: 0 3px 8px rgba(0,0,0,.25);
-      cursor: default;
-      width: max-content;
-      display: none;
-      z-index: 10;
+      cursor: default; width: max-content;
+      display: none; z-index: 10;
     }
     #goal-badge  { left: 0; }
     #timer-badge { right: 0; }
 
-    /* Forms */
+    /* Form styles */
     #study-form { margin-top: 14px; max-width: 520px; width: 100%;
       background: rgba(15,23,42,.9); border:1px solid #334155;
       border-radius: 12px; padding: 14px; }
@@ -73,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const show = (t, s = "") => { titleEl.textContent = t; bodyEl.textContent = s; overlay.style.display = "grid"; };
   const hide = () => { overlay.style.display = "none"; };
 
-  // ---------- NoStorage (fixes “function is not a constructor”) ----------
+  // ---------- NoStorage ----------
   function NoStorageManager() {}
   NoStorageManager.prototype.getBestScore = () => 0;
   NoStorageManager.prototype.setBestScore = _ => {};
@@ -85,11 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function ensureGridHUD() {
     let hud = document.querySelector(".grid-hud");
     if (hud) return hud;
-
     const gc = document.querySelector(".game-container");
     if (!gc) return null;
-
-    // place just before the grid frame
     const gridFrame = gc.querySelector(".grid-container");
     hud = document.createElement("div");
     hud.className = "grid-hud";
@@ -105,9 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (el) return el;
     const hud = ensureGridHUD();
     el = document.createElement("button");
-    el.id = "goal-badge";
-    el.type = "button";
-    el.disabled = true;
+    el.id = "goal-badge"; el.type = "button"; el.disabled = true;
     hud?.appendChild(el);
     return el;
   }
@@ -116,9 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (el) return el;
     const hud = ensureGridHUD();
     el = document.createElement("button");
-    el.id = "timer-badge";
-    el.type = "button";
-    el.disabled = true;
+    el.id = "timer-badge"; el.type = "button"; el.disabled = true;
     hud?.appendChild(el);
     return el;
   }
@@ -134,7 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function clearBadges(){ setGoalBadge(""); setTimerBadge(""); }
 
-  // ---------- Config loader (JSON first; YAML fallback) ----------
+  // ---------- Config loader ----------
   async function ensureYamlLib() {
     if (window.jsyaml) return;
     const u = "https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js";
@@ -255,6 +239,99 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function flashTileEl(el, ms=600){ if(!el) return; el.classList.add("flash-brief"); setTimeout(()=>el.classList.remove("flash-brief"), ms); }
 
+  // ---------- Inline questions (RESTORED) ----------
+  function askPostQuestions(block){
+    const qs = block?.post_questions;
+    if (!qs || !Array.isArray(qs) || !qs.length) return Promise.resolve();
+
+    if (Tests && typeof Tests.runTests === "function") {
+      show("Quick questions", "Answer, then continue.");
+      return Tests.runTests(qs, `${block.id}__post`, block.tests_options || null)
+        .then(res => {
+          const write = (id, val) => L.logTest(block.id, String(id), "post_question", val);
+          if (res == null) return;
+
+          if (Array.isArray(res)) {
+            res.forEach((item, i) => {
+              if (item && typeof item === "object") {
+                const id  = item.id ?? item.itemId ?? item.key ?? i;
+                const val = item.response ?? item.value ?? item.answer ?? item.score ?? JSON.stringify(item);
+                write(id, val);
+              } else {
+                write(i, item);
+              }
+            });
+          } else if (typeof res === "object") {
+            Object.entries(res).forEach(([k, v]) => write(k, v));
+          } else {
+            write("result", res);
+          }
+        })
+        .catch(e => console.error("Post questions error:", e))
+        .finally(() => hide());
+    }
+
+    // Fallback mini form
+    return new Promise((resolve) => {
+      show("Quick questions", "Answer, then continue.");
+      let form = document.getElementById("study-form");
+      if (!form) {
+        form = document.createElement("div");
+        form.id = "study-form";
+        overlay.appendChild(form);
+      }
+      form.innerHTML = "";
+
+      const answers = {};
+      qs.forEach((q, idx) => {
+        const wrap = document.createElement("div"); wrap.className = "q";
+        const lbl = document.createElement("label"); lbl.textContent = q.text || `Question ${idx+1}`;
+        wrap.appendChild(lbl);
+
+        if (q.type === "single" && Array.isArray(q.options)) {
+          const opts = document.createElement("div"); opts.className = "opts";
+          q.options.forEach(opt => {
+            const b = document.createElement("button");
+            b.type = "button"; b.className = "optbtn"; b.textContent = opt;
+            b.addEventListener("click", () => {
+              opts.querySelectorAll(".optbtn").forEach(x => x.classList.remove("active"));
+              b.classList.add("active");
+              answers[q.id || `q${idx}`] = opt;
+            });
+            opts.appendChild(b);
+          });
+          wrap.appendChild(opts);
+        } else if (q.type === "scale" && Number.isFinite(q.min) && Number.isFinite(q.max)) {
+          const r = document.createElement("input");
+          const out = document.createElement("div");
+          const box = document.createElement("div");
+          box.className="rangewrap"; out.style.minWidth="32px";
+          r.type="range"; r.min=q.min; r.max=q.max; r.step=1; r.value=q.min;
+          out.textContent=String(q.min);
+          r.addEventListener("input",()=>{ out.textContent=r.value; answers[q.id || `q${idx}`]=Number(r.value); });
+          answers[q.id || `q${idx}`]=q.min;
+          box.appendChild(r); box.appendChild(out); wrap.appendChild(box);
+        } else {
+          const inp = document.createElement("input");
+          inp.type = "text"; inp.style.width="100%";
+          inp.addEventListener("input", () => { answers[q.id || `q${idx}`] = inp.value; });
+          wrap.appendChild(inp);
+        }
+        form.appendChild(wrap);
+      });
+
+      const submit = document.createElement("button");
+      submit.id = "study-submit"; submit.textContent = "Submit";
+      submit.addEventListener("click", () => {
+        Object.entries(answers).forEach(([itemId, response]) => {
+          L.logTest(block.id, itemId, "post_question", response);
+        });
+        form.remove(); hide(); resolve();
+      });
+      form.appendChild(submit);
+    });
+  }
+
   // ================= PLAY =================
   let lastPlayBlockId = null;
 
@@ -319,61 +396,57 @@ document.addEventListener("DOMContentLoaded", () => {
         origAdd();
       };
 
+      // Timer badge
       if((block.stop?.kind==="time"&&block.stop?.value)||block.timer?.hard_cap_sec){
         const secs=Number(block.timer?.hard_cap_sec||block.stop?.value||0);
         cd=startCountdown(secs,()=>stop("time_done"));
       }
 
-     // --- replace this whole block ---
-const oldAct = gm.actuator.actuate.bind(gm.actuator);
-gm.actuator.actuate = (grid, meta) => {
-  oldAct(grid, meta);
+      // WIN logic without locking moves
+      const oldAct=gm.actuator.actuate.bind(gm.actuator);
+      gm.actuator.actuate=(grid,meta)=>{
+        oldAct(grid,meta);
+        if (ended) return;
 
-  if (ended) return;
+        if(meta?.terminated){
+          stop(meta.over ? "game_over" : "won");
+          return;
+        }
 
-  // if 2048 engine says game ended, move on
-  if (meta?.terminated) {
-    stop(meta.over ? "game_over" : "won");
-    return;
-  }
+        if(Number.isFinite(goalTile)){
+          let maxNow=0;
+          for(let x=0;x<gm.size;x++){
+            for(let y=0;y<gm.size;y++){
+              const c=gm.grid.cells[x][y];
+              if(c) maxNow=Math.max(maxNow,c.value);
+            }
+          }
+          if(maxNow>=goalTile){
+            show("Goal reached",`Reached ${goalTile}`);
+            setTimeout(()=>stop("goal_reached"),500);
+          }
+        }
+      };
 
-  // our custom goal check (do NOT set gm.won)
-  if (Number.isFinite(goalTile)) {
-    let maxNow = 0;
-    for (let x = 0; x < gm.size; x++) {
-      for (let y = 0; y < gm.size; y++) {
-        const c = gm.grid.cells[x][y];
-        if (c) maxNow = Math.max(maxNow, c.value);
-      }
-    }
-    if (maxNow >= goalTile) {
-      show("Goal reached", `Reached ${goalTile}`);
-      setTimeout(() => stop("goal_reached"), 500);
-    }
-  }
-};
-
-
-      // Oddball flashes (2 random)
+      // Oddball flashes (optional)
       const enableMicro=(block.id==="oddball_mode");
       let microStarted=false, microCount=0;
       const MICRO_LIMIT=2;
+      function getRandomTileEl(){
+        const inners=Array.from(document.querySelectorAll(".tile .tile-inner"));
+        return inners.length? inners[Math.floor(Math.random()*inners.length)] : null;
+      }
+      function flashTileEl(el, ms=600){ if(!el) return; el.classList.add("flash-brief"); setTimeout(()=>el.classList.remove("flash-brief"), ms); }
       function fireFlashOnce(){
         if (!enableMicro || microCount >= MICRO_LIMIT || ended) return;
-        const el=getRandomTileEl();
-        if(el){ flashTileEl(el,700); }
+        const el=getRandomTileEl(); if(el){ flashTileEl(el,700); }
         microCount += 1;
         if (microCount < MICRO_LIMIT) {
           const gap = 12000 + Math.floor(Math.random()*8000);
           microTimer = setTimeout(fireFlashOnce, gap);
         }
       }
-      setTimeout(()=>{
-        if(enableMicro && !microStarted && !ended){
-          microStarted=true;
-          fireFlashOnce();
-        }
-      },3000);
+      setTimeout(()=>{ if(enableMicro && !microStarted && !ended){ microStarted=true; fireFlashOnce(); } },3000);
 
       function finalizeAndResolve(){
         lastPlayBlockId = block.id;
@@ -383,14 +456,20 @@ gm.actuator.actuate = (grid, meta) => {
           resolve(rows);
         },80);
       }
+
       function stop(){
         if (ended) return;
         ended = true;
         try { cd?.stop?.(); } catch(_){}
         try { clearTimeout(microTimer); } catch(_){}
         hide();
-        setTimerBadge(""); // hide timer at end
-        askPostQuestions(block).then(finalizeAndResolve);
+        setTimerBadge("");
+
+        const p = (block?.post_questions && block.post_questions.length)
+          ? askPostQuestions(block)
+          : Promise.resolve();
+
+        p.then(finalizeAndResolve);
       }
     });
   }
@@ -433,7 +512,7 @@ gm.actuator.actuate = (grid, meta) => {
   }
 
   async function runStudy(config){
-    const { meta, blocks, sequence, output }=config;
+    const { blocks, sequence, output }=config;
     const map=Object.fromEntries(blocks.map(b=>[b.id,b]));
     for(let i=0;i<sequence.length;i++){
       const id=sequence[i],b=map[id]; if(!b) continue;
@@ -445,22 +524,20 @@ gm.actuator.actuate = (grid, meta) => {
         await new Promise(r=>setTimeout(r,(b.stop?.value||10)*1000));
         continue;
       }
-
       if(b.type==="play"){
         const moveRows = await runPlayBlock(config,b);
         if (output?.autosave_csv_on_block_end){
           const csv  = L.toCSVMoves(moveRows);
-          const name = buildName(output.filename_pattern, meta, id, "moves");
+          const name = buildName(output.filename_pattern, config.meta, id, "moves");
           L.download(name,csv);
         }
         continue;
       }
-
       if(b.type==="tests"){
         const testRows = await runTestsBlock(config,b);
         if (output?.autosave_csv_on_block_end){
           const csv  = L.toCSVTests(testRows);
-          const name = buildName(output.tests_filename_pattern, meta, id, "tests");
+          const name = buildName(output.tests_filename_pattern, config.meta, id, "tests");
           L.download(name,csv);
         }
         continue;
