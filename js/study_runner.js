@@ -1,5 +1,6 @@
-// study_runner.js — v=2958 (JSON-first config + session-filtered CSV)
-console.log("study_runner loaded v=2958");
+// study_runner.js — v=2959 (goal popup font tweak + wording)
+
+console.log("study_runner loaded v=2959");
 
 document.addEventListener("DOMContentLoaded", () => {
   const s = document.createElement("style");
@@ -18,8 +19,9 @@ document.addEventListener("DOMContentLoaded", () => {
       position: fixed; inset: 0; z-index: 100000;
       place-items: center; padding: 24px;
     }
-    #study-title { font:700 22px/1.2 system-ui; letter-spacing:.2px; }
-    #study-body  { font:500 14px/1.35 system-ui; opacity:.95; margin-top:6px; }
+    /* Font size slightly larger, per request */
+    #study-title { font:800 26px/1.2 system-ui; letter-spacing:.2px; }
+    #study-body  { font:600 16px/1.35 system-ui; opacity:.95; margin-top:6px; }
     #study-form { margin-top: 14px; max-width: 520px; width: 100%;
       background: rgba(15,23,42,.9); border:1px solid #334155;
       border-radius: 12px; padding: 14px; }
@@ -216,6 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!qs || !Array.isArray(qs) || !qs.length) return Promise.resolve();
 
     if (Tests && typeof Tests.runTests === "function") {
+      // If TestsUI handles post questions, delegate
       show("Quick questions", "Answer, then continue.");
       return Tests.runTests(qs, `${block.id}__post`, block.tests_options || null)
         .then(res => {
@@ -242,7 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
         .finally(() => hide());
     }
 
-    // Built-in form
+    // Built-in fallback form
     return new Promise((resolve) => {
       show("Quick questions", "Answer, then continue.");
       let form = document.getElementById("study-form");
@@ -359,7 +362,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const SESSION_ID = (typeof L.getContext === "function" ? L.getContext().session_id : null);
 
       const goalTile=Number.isFinite(Number(block.goal_tile))?Number(block.goal_tile):null;
-      const introMsg=goalTile?`Goal: reach ${goalTile}`:"Press arrow keys to play";
+      // Wording changed to "Goal: Reach X" and font already larger.
+      const introMsg=goalTile?`Goal: Reach ${goalTile}`:"Press arrow keys to play";
       show(block.description||block.id,introMsg);
       const ov=document.getElementById("study-overlay");
       if(ov) ov.style.pointerEvents="none";
@@ -420,6 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       };
 
+      // ---- Attention / Oddball: two random flashes only during gameplay ----
       const enableMicro=(block.id==="oddball_mode");
       let microStarted=false, microCount=0;
       const MICRO_LIMIT=2;
@@ -429,6 +434,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if(el){ flashTileEl(el,700); }
         microCount += 1;
         if (microCount < MICRO_LIMIT) {
+          // random gap between flashes to keep them unpredictable
           const gap = 12000 + Math.floor(Math.random()*8000);
           microTimer = setTimeout(fireFlashOnce, gap);
         }

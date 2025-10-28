@@ -1,6 +1,6 @@
 meta:
   study_id: "MPhil-2048-v1"
-  version: "1.1.0"
+  version: "1.1.1"
 
 global:
   board_size: 4
@@ -24,20 +24,19 @@ blocks:
     board_size: 4
     goal_tile: 128
     start_state:
-     classic: true
+      classic: true
     rules:
-     undo_allowed: true
-     hints: true
+      undo_allowed: true
+      hints: true
     spawn:
-     rates: {"2": 0.9, "4": 0.1}
+      rates: {"2": 0.9, "4": 0.1}
     ui:
-     palette: "soft"
-     feedback: ["Nice start!", "Keep going!"]
-     animation_speed: "slow"
+      palette: "soft"
+      feedback: ["Nice start!", "Keep going!"]
+      animation_speed: "slow"
     audio:
-     music: "tempo_easy"
-     sfx: "subtle_particles"
-
+      music: "tempo_easy"
+      sfx: "subtle_particles"
 
   - id: "tests_after_easy"
     type: "tests"
@@ -46,25 +45,23 @@ blocks:
       TLX:
         omit_dimensions: ["temporal_demand"]
 
-
-
-   # ——— Medium Mode ———
+  # ——— Medium Mode ———
   - id: "medium_mode"
     type: "play"
-    description: "Balanced challenge — (2-minute timer)"
+    description: "Balanced challenge — 1:30 timer"
     board_size: 4
-    goal_tile: 512
+    goal_tile: 256                 # CHANGED
     start_state:
-    classic: true
+      classic: true
     rules:
       undo_allowed: false
       hints: false
     stop:
       kind: "time"
-      value: 120                   # 2 minutes
+      value: 90                    # CHANGED (1:30)
     timer:
-      hard_cap_sec: 120
-      show_countdown: true         # show countdown only here
+      hard_cap_sec: 90             # CHANGED (1:30)
+      show_countdown: true
     spawn:
       rates: {"2": 0.9, "4": 0.1}
     ui:
@@ -75,8 +72,6 @@ blocks:
       music: "tempo_medium"
       sfx: "subtle_particles"
 
-
-
   # ——— Tests after Medium ———
   - id: "tests_after_medium"
     type: "tests"
@@ -85,25 +80,26 @@ blocks:
   # ——— Hard Mode ———
   - id: "hard_mode"
     type: "play"
-    description: "Intense challenge — dense board, 1-minute timer"
+    description: "Intense challenge — 35% prefilled; bias spawns to 2"
     board_size: 4
     goal_tile: 1024
     start_state:
       classic: false
       prefill:
-       fill_ratio: 0.50               # 50% of board filled at start
-       values: {"4": 0.30, "8": 0.25, "16": 0.25, "32": 0.20}
+        fill_ratio: 0.35               # CHANGED
+        # Include 2s and 4s mostly; keep some higher tiles for variety
+        values: {"2": 0.60, "4": 0.25, "8": 0.10, "16": 0.05}
     rules:
       undo_allowed: false
       hints: false
     stop:
       kind: "time"
-      value: 60                        # 1 minute (60 seconds)
+      value: 60                         # keep 1 minute
     timer:
       hard_cap_sec: 60
       show_countdown: true
     spawn:
-      rates: {"2": 0.30, "4":0.25, "8": 0.25, "32": 0.20}
+      rates: {"2": 0.95, "4": 0.05}     # CHANGED: more 2s
     ui:
       palette: "high_contrast"
       feedback: ["Focus!", "Fast moves!", "Good merge!", "Stay sharp!"]
@@ -112,16 +108,12 @@ blocks:
       music: "tempo_hard"
       sfx: "crisp"
 
-
-              # requires sfx hook
-
   # ——— Tests after Hard ———
   - id: "tests_after_hard"
     type: "tests"
     tests: ["TLX","SAM","Stroop"]
 
   # ——— Oddball Mode ———
-# ——— Oddball Mode ———
   - id: "oddball_mode"
     type: "play"
     description: "Oddball task — visual attention test"
@@ -145,25 +137,21 @@ blocks:
       music: "tempo_medium"
       sfx: "subtle_particles"
     post_questions:
-    - type: "single"
-      id: "saw_flash"
-      text: "Did you notice the flashes?"
-      options: ["Yes", "No"]
-    - type: "scale"
-      id: "flash_count"
-      text: "How many flashes did you see?"
-      min: 0
-      max: 2
-      labels: ["0","1","2"]
+      - type: "single"
+        id: "saw_flash"
+        text: "Did you notice the flashes?"
+        options: ["Yes", "No"]
+      - type: "scale"
+        id: "flash_count"
+        text: "How many flashes did you see?"
+        min: 0
+        max: 2
+        labels: ["0","1","2"]
 
-
-
-        # ——— Tests after Oddball ———
+  # ——— Tests after Oddball ———
   - id: "tests_after_oddball"
     type: "tests"
     tests: ["TLX", "SAM", "Stroop"]
-
-
 
 sequence:
   - baseline_rest

@@ -1,9 +1,9 @@
-// TestsUI v3.8 — TLX (0–9) + Feelings + Stroop(clickable; 10 congruent + 10 incongruent)
-// Game keys blocked only during tests. Includes watchdog + emergency exit.
+// TestsUI v3.9 — TLX (0–9) + Feelings + Stroop(TEXT-only options)
+// Change: Stroop options show ONLY color names (no color squares).
 
 window.TestsUI = (() => {
   const L = window.StudyLogger;
-  console.log("TestsUI v3.8 loaded");
+  console.log("TestsUI v3.9 loaded");
 
   // ---------- Global state ----------
   let IN_TESTS = false;
@@ -83,7 +83,7 @@ window.TestsUI = (() => {
     }
   }, true);
 
-  // Watchdog: if overlay sits > 3s while not in tests, clear it.
+  // Watchdog
   setInterval(() => {
     const host = document.getElementById("tests-host");
     const stale = host && !IN_TESTS && Date.now() - hostCreatedAt > 3000;
@@ -116,7 +116,7 @@ window.TestsUI = (() => {
     return BASE_ITEMS.map(q => ({ ...q, label: QUESTION_TEXT[q.id] || q.label }));
   }
 
-  // ---------- TLX UI (0–9, sticky Continue) ----------
+  // ---------- TLX UI (0–9) ----------
   function tlxCard(title, items, onSubmit) {
     const host = ensureHost();
     host.innerHTML = "";
@@ -232,7 +232,7 @@ window.TestsUI = (() => {
     });
   }
 
-  // ---------- Feelings (plain valence/arousal) ----------
+  // ---------- Feelings ----------
   async function runSAM(blockId) {
     return new Promise(resolve => {
       const host = ensureHost();
@@ -308,119 +308,116 @@ window.TestsUI = (() => {
       return wrap;
     }
   }
-  
-// ---------- Stroop (clickable options; 10 congruent + 10 incongruent; no part text) ----------
-async function runStroop(blockId) {
-  return new Promise(resolver => {
-    const host = ensureHost();
-    host.innerHTML = "";
 
-    const card = document.createElement("div");
-    Object.assign(card.style, {
-      width: "min(720px,92vw)", background: "#0f172a", color: "#e5e7eb",
-      border: "1px solid #334155", borderRadius: "14px", padding: "18px",
-      font: "14px system-ui", boxShadow: "0 16px 40px rgba(0,0,0,.45)"
-    });
-    card.innerHTML = `
-      <div style="font-weight:700;font-size:18px;margin-bottom:4px">Color-Word Task</div>
-      <div style="opacity:.9;margin-bottom:10px">
-        Click the option that matches the <b>color</b> of the word.
-      </div>
-      <div id="stroop-word" style="font-size:36px;margin:16px 0;font-weight:800;text-align:center;"></div>
-      <div id="stroop-options" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px"></div>
-      <div id="stroop-progress" style="opacity:.85"></div>`;
-    host.appendChild(card);
+  // ---------- Stroop (text-only options; 10 congruent + 10 incongruent) ----------
+  async function runStroop(blockId) {
+    return new Promise(resolver => {
+      const host = ensureHost();
+      host.innerHTML = "";
 
-    const colors = ["red","green","blue","yellow"];
-    const words  = ["RED","GREEN","BLUE","YELLOW"];
-
-    // 10 congruent + 10 incongruent
-    const trials = [];
-    for (let i=0;i<10;i++) {
-      const idx = Math.floor(Math.random()*4);
-      trials.push({ congruent:true, word:words[idx], color:colors[idx] });
-    }
-    for (let i=0;i<10;i++) {
-      const wordIdx = Math.floor(Math.random()*4);
-      let colorIdx = Math.floor(Math.random()*4);
-      while (colorIdx === wordIdx) colorIdx = Math.floor(Math.random()*4);
-      trials.push({ congruent:false, word:words[wordIdx], color:colors[colorIdx] });
-    }
-
-    let trial = 0, correct = 0;
-    let congCorrect=0, incongCorrect=0;
-    const rts = [], congRT=[], incongRT=[];
-
-    const wordEl  = card.querySelector("#stroop-word");
-    const optsEl  = card.querySelector("#stroop-options");
-    const progEl  = card.querySelector("#stroop-progress");
-
-    function renderOptions(onChoose) {
-      optsEl.innerHTML = "";
-      for (const c of colors) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.innerHTML = `
-          <div style="display:flex;align-items:center;gap:8px;justify-content:center">
-            <span style="display:inline-block;width:14px;height:14px;background:${c};border-radius:3px;border:1px solid #475569"></span>
-            <span style="font-weight:600;text-transform:uppercase">${c}</span>
-          </div>`;
-        Object.assign(btn.style, {
-          padding:"10px", border:"1px solid #475569", borderRadius:"10px",
-          background:"#1e293b", color:"#fff", cursor:"pointer"
-        });
-        btn.onclick = () => onChoose(c);
-        optsEl.appendChild(btn);
-      }
-    }
-
-    let t0 = 0;
-    function showTrial() {
-      const t = trials[trial];
-      wordEl.textContent = t.word;
-      wordEl.style.color = t.color;
-      progEl.textContent = `Trial ${trial+1} / 20`;
-
-      t0 = performance.now();
-      renderOptions((choiceColor) => {
-        const rt = performance.now() - t0;
-        const isCorrect = choiceColor === t.color;
-        correct += isCorrect ? 1 : 0;
-        if (t.congruent) {
-          congCorrect += isCorrect ? 1 : 0;
-          congRT.push(rt);
-        } else {
-          incongCorrect += isCorrect ? 1 : 0;
-          incongRT.push(rt);
-        }
-        rts.push(rt);
-
-        L.log("test","Stroop_trial", isCorrect ? 1 : 0, {
-          block: blockId, trial: trial+1, congruent: t.congruent ? 1 : 0,
-          word: t.word, color: t.color, chosen: choiceColor,
-          rt_ms: Math.round(rt)
-        });
-
-        trial++;
-        if (trial >= 20) {
-          const mean = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
-          L.log("test","Stroop_summary", correct, {
-            total: 20,
-            cong_correct: congCorrect, incong_correct: incongCorrect,
-            cong_mean_rt_ms: mean(congRT), incong_mean_rt_ms: mean(incongRT),
-            overall_mean_rt_ms: mean(rts)
-          });
-          clearHost();
-          resolver();
-        } else {
-          showTrial();
-        }
+      const card = document.createElement("div");
+      Object.assign(card.style, {
+        width: "min(720px,92vw)", background: "#0f172a", color: "#e5e7eb",
+        border: "1px solid #334155", borderRadius: "14px", padding: "18px",
+        font: "14px system-ui", boxShadow: "0 16px 40px rgba(0,0,0,.45)"
       });
-    }
+      card.innerHTML = `
+        <div style="font-weight:700;font-size:18px;margin-bottom:4px">Color-Word Task</div>
+        <div style="opacity:.9;margin-bottom:10px">
+          Click the option that matches the <b>color</b> of the word.
+        </div>
+        <div id="stroop-word" style="font-size:36px;margin:16px 0;font-weight:800;text-align:center;"></div>
+        <div id="stroop-options" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px"></div>
+        <div id="stroop-progress" style="opacity:.85"></div>`;
+      host.appendChild(card);
 
-    showTrial();
-  });
-}
+      const colors = ["red","green","blue","yellow"];
+      const words  = ["RED","GREEN","BLUE","YELLOW"];
+
+      // 10 congruent + 10 incongruent
+      const trials = [];
+      for (let i=0;i<10;i++) {
+        const idx = Math.floor(Math.random()*4);
+        trials.push({ congruent:true, word:words[idx], color:colors[idx] });
+      }
+      for (let i=0;i<10;i++) {
+        const wordIdx = Math.floor(Math.random()*4);
+        let colorIdx = Math.floor(Math.random()*4);
+        while (colorIdx === wordIdx) colorIdx = Math.floor(Math.random()*4);
+        trials.push({ congruent:false, word:words[wordIdx], color:colors[colorIdx] });
+      }
+
+      let trial = 0, correct = 0;
+      let congCorrect=0, incongCorrect=0;
+      const rts = [], congRT=[], incongRT=[];
+
+      const wordEl  = card.querySelector("#stroop-word");
+      const optsEl  = card.querySelector("#stroop-options");
+      const progEl  = card.querySelector("#stroop-progress");
+
+      function renderOptions(onChoose) {
+        optsEl.innerHTML = "";
+        for (const c of colors) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          // TEXT ONLY label (no color square)
+          btn.textContent = c.toUpperCase();
+          Object.assign(btn.style, {
+            padding:"10px", border:"1px solid #475569", borderRadius:"10px",
+            background:"#1e293b", color:"#fff", cursor:"pointer", fontWeight:700
+          });
+          btn.onclick = () => onChoose(c);
+          optsEl.appendChild(btn);
+        }
+      }
+
+      let t0 = 0;
+      function showTrial() {
+        const t = trials[trial];
+        wordEl.textContent = t.word;
+        wordEl.style.color = t.color;
+        progEl.textContent = `Trial ${trial+1} / 20`;
+
+        t0 = performance.now();
+        renderOptions((choiceColor) => {
+          const rt = performance.now() - t0;
+          const isCorrect = choiceColor === t.color;
+          correct += isCorrect ? 1 : 0;
+          if (t.congruent) {
+            congCorrect += isCorrect ? 1 : 0;
+            congRT.push(rt);
+          } else {
+            incongCorrect += isCorrect ? 1 : 0;
+            incongRT.push(rt);
+          }
+          rts.push(rt);
+
+          L.log("test","Stroop_trial", isCorrect ? 1 : 0, {
+            block: blockId, trial: trial+1, congruent: t.congruent ? 1 : 0,
+            word: t.word, color: t.color, chosen: choiceColor,
+            rt_ms: Math.round(rt)
+          });
+
+          trial++;
+          if (trial >= 20) {
+            const mean = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+            L.log("test","Stroop_summary", correct, {
+              total: 20,
+              cong_correct: congCorrect, incong_correct: incongCorrect,
+              cong_mean_rt_ms: mean(congRT), incong_mean_rt_ms: mean(incongRT),
+              overall_mean_rt_ms: mean(rts)
+            });
+            clearHost();
+            resolver();
+          } else {
+            showTrial();
+          }
+        });
+      }
+
+      showTrial();
+    });
+  }
 
 
   // ---------- Master runner ----------
