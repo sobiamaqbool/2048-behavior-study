@@ -516,8 +516,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const map=Object.fromEntries(blocks.map(b=>[b.id,b]));
     for(let i=0;i<sequence.length;i++){
       const id=sequence[i],b=map[id]; if(!b) continue;
-      const label=preBlockLabel(id,b.type);
-      if(label){ show(label.title,label.body); await sleep(5000); hide(); }
+      const PREBLOCK_MS = 1200; // 1.2 seconds
+      if (label) {
+        show(label.title, label.body);
+        await sleep(PREBLOCK_MS);
+        hide();
+      }
+
 
       if(b.type==="rest"){
         clearBadges();
