@@ -42,19 +42,18 @@ document.addEventListener("DOMContentLoaded", () => {
       border-radius: 10px; padding: 6px 10px; font: 600 13px system-ui;
       box-shadow: 0 6px 18px rgba(0,0,0,.35); display: none;
     }
-    /* Persistent goal badge */
-    #goal-badge  {
-      position: relative;
-      display: inline-block;
-      margin-top: 10px; /* space below the 2048 line */
-      background: #8C7B68;
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      padding: 8px 18px;
-      font: 700 15px/1.3 system-ui;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.25);
-      cursor: default;
+/* Button-style goal badge under the intro line */
+#goal-badge {
+  display: none;
+  background: #8C7B68;   /*  color */
+  color: #ffffff;        /* white text */
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font: 700 15px/1.2 system-ui;
+  box-shadow: 0 3px 8px rgba(0,0,0,.25);
+  cursor: default;
+  margin-top: 10px;      /* space below the intro line */
 }
   `;
   document.head.appendChild(s);
@@ -72,24 +71,48 @@ document.addEventListener("DOMContentLoaded", () => {
   const hide = () => { overlay.style.display = "none"; };
 
   // ---------- Goal badge ----------
-  function ensureGoalBadge(){
-    let el = document.getElementById("goal-badge");
-    if (el) return el;
-    el = document.createElement("div");
-    el.id = "goal-badge";
-    el.textContent = ""; // set later
-    document.body.appendChild(el);
-    return el;
+// Put the badge right after ".game-intro"
+function ensureGoalBadge(){
+  let el = document.getElementById("goal-badge");
+  if (el) return el;
+
+  const btn = document.createElement("button");
+  btn.id = "goal-badge";
+  btn.type = "button";
+  btn.disabled = true; // looks like a button, not clickable
+
+  // Find the intro line container
+  const intro = document.querySelector(".above-game .game-intro") ||
+                document.querySelector(".game-intro");
+
+  if (intro && intro.parentNode) {
+    // insert AFTER the intro line
+    intro.parentNode.insertBefore(btn, intro.nextSibling);
+  } else {
+    // fallback: put into heading
+    const heading = document.querySelector(".above-game") ||
+                    document.querySelector(".heading") ||
+                    document.querySelector(".game-container");
+    heading?.prepend(btn);
   }
-  function setGoalBadge(text){
-    const el = ensureGoalBadge();
+  return btn;
+}
+
+function setGoalBadge(text){
+  const el = ensureGoalBadge();
+  if (text) {
     el.textContent = text;
-    el.style.display = text ? "block" : "none";
+    el.style.display = "inline-block";
+  } else {
+    el.style.display = "none";
   }
-  function clearGoalBadge(){
-    const el = document.getElementById("goal-badge");
-    if (el) el.style.display = "none";
-  }
+}
+
+function clearGoalBadge(){
+  const el = document.getElementById("goal-badge");
+  if (el) el.style.display = "none";
+}
+
 
   // ---------- Config loader (JSON first; YAML fallback) ----------
   async function ensureYamlLib() {
