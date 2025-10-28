@@ -1,6 +1,7 @@
-// study_runner.js — v=2959 (goal popup font tweak + wording)
 
-console.log("study_runner loaded v=2959");
+// study_runner.js — v=2960 (goal text larger + persistent goal badge)
+
+console.log("study_runner loaded v=2960");
 
 document.addEventListener("DOMContentLoaded", () => {
   const s = document.createElement("style");
@@ -19,9 +20,10 @@ document.addEventListener("DOMContentLoaded", () => {
       position: fixed; inset: 0; z-index: 100000;
       place-items: center; padding: 24px;
     }
-    /* Font size slightly larger, per request */
-    #study-title { font:800 26px/1.2 system-ui; letter-spacing:.2px; }
-    #study-body  { font:600 16px/1.35 system-ui; opacity:.95; margin-top:6px; }
+    /* Title back to normal size */
+    #study-title { font:700 22px/1.2 system-ui; letter-spacing:.2px; }
+    /* Make GOAL line bigger and bold */
+    #study-body  { font:800 26px/1.25 system-ui; opacity:.98; margin-top:8px; }
     #study-form { margin-top: 14px; max-width: 520px; width: 100%;
       background: rgba(15,23,42,.9); border:1px solid #334155;
       border-radius: 12px; padding: 14px; }
@@ -40,6 +42,15 @@ document.addEventListener("DOMContentLoaded", () => {
       border-radius: 10px; padding: 6px 10px; font: 600 13px system-ui;
       box-shadow: 0 6px 18px rgba(0,0,0,.35); display: none;
     }
+    /* Persistent goal badge */
+    #goal-badge {
+      position: fixed; top: 14px; left: 14px; z-index: 10000;
+      background: #0f172a; color: #e5e7eb;
+      border: 1px solid #334155; border-radius: 10px;
+      padding: 6px 10px; font: 700 13px/1.25 system-ui;
+      box-shadow: 0 6px 18px rgba(0,0,0,.35);
+      display: none;
+    }
   `;
   document.head.appendChild(s);
 });
@@ -55,7 +66,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const show = (t, s = "") => { titleEl.textContent = t; bodyEl.textContent = s; overlay.style.display = "grid"; };
   const hide = () => { overlay.style.display = "none"; };
 
-  // ---------- Config loader (prefer JSON; YAML fallback) ----------
+  // ---------- Goal badge ----------
+  function ensureGoalBadge(){
+    let el = document.getElementById("goal-badge");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "goal-badge";
+    el.textContent = ""; // set later
+    document.body.appendChild(el);
+    return el;
+  }
+  function setGoalBadge(text){
+    const el = ensureGoalBadge();
+    el.textContent = text;
+    el.style.display = text ? "block" : "none";
+  }
+  function clearGoalBadge(){
+    const el = document.getElementById("goal-badge");
+    if (el) el.style.display = "none";
+  }
+
+  // ---------- Config loader (JSON first; YAML fallback) ----------
   async function ensureYamlLib() {
     if (window.jsyaml) return;
     const urls = [
@@ -218,7 +249,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!qs || !Array.isArray(qs) || !qs.length) return Promise.resolve();
 
     if (Tests && typeof Tests.runTests === "function") {
-      // If TestsUI handles post questions, delegate
       show("Quick questions", "Answer, then continue.");
       return Tests.runTests(qs, `${block.id}__post`, block.tests_options || null)
         .then(res => {
@@ -342,6 +372,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ================= REST =================
   async function runRestBlock(cfg, block){
+    // Hide goal during rest
+    clearGoalBadge();
     show("Rest", block.ui?.show_message || "Relax");
     await new Promise(r=>setTimeout(r,(block.stop?.value||10)*1000));
     hide();
@@ -362,12 +394,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const SESSION_ID = (typeof L.getContext === "function" ? L.getContext().session_id : null);
 
       const goalTile=Number.isFinite(Number(block.goal_tile))?Number(block.goal_tile):null;
-      // Wording changed to "Goal: Reach X" and font already larger.
-      const introMsg=goalTile?`Goal: Reach ${goalTile}`:"Press arrow keys to play";
-      show(block.description||block.id,introMsg);
+      const goalLine=goalTile?`Goal: Reach ${goalTile}`:"Press arrow keys to play";
+
+      // Popup: title normal size, GOAL big
+      show(block.description||block.id, goalLine);
       const ov=document.getElementById("study-overlay");
       if(ov) ov.style.pointerEvents="none";
       setTimeout(()=>{ hide(); if(ov) ov.style.pointerEvents=""; },3000);
+
+      // Keep goal visible on screen after popup
+      setGoalBadge(goalTile ? goalLine : "");
 
       let ended=false, cd=null, microTimer=null;
 
@@ -434,7 +470,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if(el){ flashTileEl(el,700); }
         microCount += 1;
         if (microCount < MICRO_LIMIT) {
-          // random gap between flashes to keep them unpredictable
           const gap = 12000 + Math.floor(Math.random()*8000);
           microTimer = setTimeout(fireFlashOnce, gap);
         }
@@ -460,6 +495,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try { cd?.stop?.(); } catch(_){}
         try { clearTimeout(microTimer); } catch(_){}
         hide();
+        // Keep goal badge visible until next block starts (or rest clears it)
         askPostQuestions(block).then(finalizeAndResolve);
       }
     });
@@ -542,6 +578,8 @@ document.addEventListener("DOMContentLoaded", () => {
         continue;
       }
     }
+    // Clear goal at the very end
+    clearGoalBadge();
     show("Study complete","Thank you!");
   }
 
@@ -552,6 +590,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await runStudy(cfg);
   }catch(e){
     console.error(e);
+    clearGoalBadge();
     show("Config error","Could not load public/block.json or block.yaml");
   }
 })();
