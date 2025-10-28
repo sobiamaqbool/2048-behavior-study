@@ -1,5 +1,5 @@
 // study_runner.js — v=2971 (goal left / timer right on grid; fixed StorageManager)
-console.log("study_runner loaded v=2971");
+console.log("study_runner loaded v=2972");
 
 document.addEventListener("DOMContentLoaded", () => {
   const s = document.createElement("style");
@@ -324,18 +324,35 @@ document.addEventListener("DOMContentLoaded", () => {
         cd=startCountdown(secs,()=>stop("time_done"));
       }
 
-      const oldAct=gm.actuator.actuate.bind(gm.actuator);
-      gm.actuator.actuate=(grid,meta)=>{
-        oldAct(grid,meta);
-        if(meta?.terminated){ stop(meta.over ? "game_over" : "won"); return; }
-        if(Number.isFinite(goalTile)){
-          let maxNow=0; grid.eachCell((x,y,c)=>{ if(c) maxNow=Math.max(maxNow,c.value); });
-          if(maxNow>=goalTile && !gm.won){
-            gm.won=true; show("You win!",`Reached ${goalTile}`);
-            setTimeout(()=>stop("goal_reached"),600);
-          }
-        }
-      };
+     // --- replace this whole block ---
+const oldAct = gm.actuator.actuate.bind(gm.actuator);
+gm.actuator.actuate = (grid, meta) => {
+  oldAct(grid, meta);
+
+  if (ended) return;
+
+  // if 2048 engine says game ended, move on
+  if (meta?.terminated) {
+    stop(meta.over ? "game_over" : "won");
+    return;
+  }
+
+  // our custom goal check (do NOT set gm.won)
+  if (Number.isFinite(goalTile)) {
+    let maxNow = 0;
+    for (let x = 0; x < gm.size; x++) {
+      for (let y = 0; y < gm.size; y++) {
+        const c = gm.grid.cells[x][y];
+        if (c) maxNow = Math.max(maxNow, c.value);
+      }
+    }
+    if (maxNow >= goalTile) {
+      show("Goal reached", `Reached ${goalTile}`);
+      setTimeout(() => stop("goal_reached"), 500);
+    }
+  }
+};
+
 
       // Oddball flashes (2 random)
       const enableMicro=(block.id==="oddball_mode");
