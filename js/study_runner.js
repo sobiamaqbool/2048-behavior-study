@@ -1,7 +1,7 @@
 
 // study_runner.js — v=2960 (goal text larger + persistent goal badge)
 
-console.log("study_runner loaded v=2960");
+console.log("study_runner loaded v=2961");
 
 document.addEventListener("DOMContentLoaded", () => {
   const s = document.createElement("style");
