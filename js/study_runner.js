@@ -1,5 +1,5 @@
-// study_runner.js — v=2975 (full: goal left, timer right, fast intro, no missing funcs)
-console.log("study_runner loaded v=2975");
+// study_runner.js — v=2976 (no-blocking popups + #cc8a3f theme)
+console.log("study_runner loaded v=2976");
 
 document.addEventListener("DOMContentLoaded", () => {
   const s = document.createElement("style");
@@ -11,16 +11,44 @@ document.addEventListener("DOMContentLoaded", () => {
       transition: all 0.25s ease;
     }
 
+    /* Overlay (popups) — themed to #cc8a3f */
     #study-overlay {
-      background: rgba(2,6,23,0.78)!important;
-      backdrop-filter: blur(6px);
-      color: #e5e7eb!important;
+      background: rgba(204,138,63,0.92)!important; /* #cc8a3f */
+      color: #ffffff!important;
       display: none;
       position: fixed; inset: 0; z-index: 100000;
       place-items: center; padding: 24px;
+      backdrop-filter: blur(4px);
     }
     #study-title { font:700 22px/1.2 system-ui; letter-spacing:.2px; }
     #study-body  { font:800 26px/1.25 system-ui; opacity:.98; margin-top:8px; }
+
+    /* Inline form (post questions) — themed */
+    #study-form {
+      margin-top: 14px; max-width: 560px; width: 100%;
+      background: rgba(204,138,63,0.25); /* translucent on brand */
+      border:1px solid rgba(255,255,255,0.35);
+      border-radius: 12px; padding: 14px; color:#fff;
+    }
+    #study-form .q { margin: 10px 0 14px; }
+    #study-form label { display:block; font:600 13px system-ui; margin-bottom:6px; }
+    #study-form .opts { display:flex; flex-wrap:wrap; gap:8px; }
+    #study-form .optbtn {
+      border:1px solid rgba(255,255,255,0.35);
+      border-radius:10px; padding:6px 10px;
+      font:600 13px system-ui; background:rgba(204,138,63,0.45);
+      cursor:pointer; color:#fff;
+    }
+    #study-form .optbtn.active {
+      background:#cc8a3f; border-color:#fff;
+    }
+    #study-form .rangewrap { display:flex; align-items:center; gap:10px; }
+    #study-form input[type=range] { flex:1; accent-color:#ffffff; }
+    #study-submit {
+      margin-top: 8px; width: 100%; padding: 10px 12px;
+      border-radius: 10px; border: 1px solid #fff;
+      background:#cc8a3f; color:#fff; font:700 14px system-ui; cursor:pointer;
+    }
 
     /* HUD anchors just above the grid */
     .grid-hud { position: relative; height: 0; }
@@ -35,20 +63,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     #goal-badge  { left: 0; }
     #timer-badge { right: 0; }
-
-    /* Form styles */
-    #study-form { margin-top: 14px; max-width: 520px; width: 100%;
-      background: rgba(15,23,42,.9); border:1px solid #334155;
-      border-radius: 12px; padding: 14px; }
-    #study-form .q { margin: 10px 0 14px; }
-    #study-form label { display:block; font:600 13px system-ui; margin-bottom:6px; }
-    #study-form .opts { display:flex; flex-wrap:wrap; gap:8px; }
-    #study-form .optbtn { border:1px solid #475569; border-radius:10px; padding:6px 10px; font:600 13px system-ui; background:#0b1220; cursor:pointer; color:#fff; }
-    #study-form .optbtn.active { background:#1f2a44; border-color:#64748b; }
-    #study-form .rangewrap { display:flex; align-items:center; gap:10px; }
-    #study-form input[type=range] { flex:1; }
-    #study-submit { margin-top: 8px; width: 100%; padding: 10px 12px;
-      border-radius: 10px; border: 1px solid #4663d0; background:#3452c8; color:#fff; font:700 14px system-ui; cursor:pointer; }
   `;
   document.head.appendChild(s);
 });
@@ -349,11 +363,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const goalTile=Number.isFinite(Number(block.goal_tile))?Number(block.goal_tile):null;
       const goalLine=goalTile?`Goal: Reach ${goalTile}`:"Press arrow keys to play";
 
-      // Popup
+      // Popup — fast, non-blocking
       show(block.description||block.id, goalLine);
-      const ov=document.getElementById("study-overlay");
-      if(ov) ov.style.pointerEvents="none";
-      setTimeout(()=>{ hide(); if(ov) ov.style.pointerEvents=""; },1200);
+      setTimeout(hide, 600);
 
       // HUD
       setGoalBadge(goalLine);
@@ -482,24 +494,21 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ================= RUNNER =================
-  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const ROUND_ORDER=["easy_mode","medium_mode","hard_mode","oddball_mode"];
   function preBlockLabel(nextId,nextType){
     if(nextType!=="play") return null;
     const idx=ROUND_ORDER.indexOf(nextId); if(idx===-1) return null;
     const n=idx+1,total=ROUND_ORDER.length;
-    return { title:`Round ${n}/${total}`, body:"Starting soon…" };
+    return { title:`Round ${n}/${total}`, body:"Get ready…" };
   }
-
   function buildName(pattern, meta, blockId, kind){
+    const ts=(()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;})();
     const base=(pattern||"{study_id}__{block_id}__{kind}__{ts}.csv")
       .replace("{study_id}", meta?.study_id||"study")
       .replace("{block_id}", blockId)
       .replace("{kind}", kind)
-      .replace("{ts}", Date.now());
-    if (!/__moves__|__tests__|__.+__/.test(base)) {
-      return base.replace(/\.csv$/i, `__${kind}.csv`);
-    }
+      .replace("{ts}", ts);
+    if (!/__moves__|__tests__|__.+__/.test(base)) return base.replace(/\.csv$/i, `__${kind}.csv`);
     return base;
   }
 
@@ -509,13 +518,9 @@ document.addEventListener("DOMContentLoaded", () => {
     for(let i=0;i<sequence.length;i++){
       const id=sequence[i],b=map[id]; if(!b) continue;
 
+      // Pre-round label — non-blocking short show
       const label = preBlockLabel(id,b.type);
-      const PREBLOCK_MS = 1200;
-      if (label) {
-        show(label.title, label.body);
-        await sleep(PREBLOCK_MS);
-        hide();
-      }
+      if (label) { show(label.title, label.body); setTimeout(hide, 600); }
 
       if(b.type==="rest"){
         clearBadges();
@@ -543,6 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     clearBadges();
     show("Study complete","Thank you!");
+    setTimeout(hide, 1200);
   }
 
   // ---------- Boot ----------
@@ -554,5 +560,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error(e);
     clearBadges();
     show("Config error","Could not load public/block.json or block.yaml");
+    setTimeout(hide, 2000);
   }
 })();
