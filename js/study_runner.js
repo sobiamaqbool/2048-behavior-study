@@ -1,5 +1,5 @@
-// study_runner.js — v=2974 (fix: label defined + smoother transition)
-console.log("study_runner loaded v=2974");
+// study_runner.js — v=2975 (full: goal left, timer right, fast intro, no missing funcs)
+console.log("study_runner loaded v=2975");
 
 document.addEventListener("DOMContentLoaded", () => {
   const s = document.createElement("style");
@@ -199,13 +199,286 @@ document.addEventListener("DOMContentLoaded", () => {
     return { stop: () => { clearInterval(id); setTimerBadge(""); } };
   }
 
-  // ---------- Prefill / weights ----------
+  // ---------- Prefill / weights / start grid ----------
   function pickWeighted(obj){
     const entries = Object.entries(obj).map(([k,v])=>[+k,+v]);
     const sum = entries.reduce((a,[,w])=>a+w,0)||1;
     let r=Math.random()*sum;
     for (const [val,w] of entries){ if ((r-=w)<=0) return Math.floor(val); }
     return Math.floor(entries[0]?.[0]??2);
+  }
+  function prefillBoard(gm, spec){
+    if (!spec?.prefill) return;
+    const ratio = Math.max(0, Math.min(1, Number(spec.prefill.fill_ratio ?? 0)));
+    let need = Math.round(gm.size*gm.size*ratio);
+    const weights = spec.prefill.values || {"2":1,"4":1};
+    while (need-- > 0 && gm.grid.availableCells().length){
+      const cell = gm.grid.randomAvailableCell();
+      gm.grid.insertTile(new Tile(cell, pickWeighted(weights)));
+    }
+  }
+  function applyStartGrid(gm, spec){
+    if (!spec?.grid) return false;
+    gm.grid = new Grid(gm.size);
+    for (let y = 0; y < spec.grid.length; y++){
+      for (let x = 0; x < spec.grid[y].length; x++){
+        const v = Number(spec.grid[y][x]) || 0;
+        if (v > 0) gm.grid.insertTile(new Tile({ x, y }, v));
+      }
+    }
+    gm.score = 0;
+    gm.over = false; gm.won = false; gm.keepPlaying = false;
+    gm.actuator.actuate(gm.grid, { score: gm.score, terminated: false });
+    return true;
+  }
+
+  // ---------- Oddball visuals ----------
+  function getRandomTileEl(){
+    const inners=Array.from(document.querySelectorAll(".tile .tile-inner"));
+    return inners.length? inners[Math.floor(Math.random()*inners.length)] : null;
+  }
+  function flashTileEl(el, ms=600){ if(!el) return; el.classList.add("flash-brief"); setTimeout(()=>el.classList.remove("flash-brief"), ms); }
+
+  // ---------- Inline questions ----------
+  function askPostQuestions(block){
+    const qs = block?.post_questions;
+    if (!qs || !Array.isArray(qs) || !qs.length) return Promise.resolve();
+
+    if (Tests && typeof Tests.runTests === "function") {
+      show("Quick questions", "Answer, then continue.");
+      return Tests.runTests(qs, `${block.id}__post`, block.tests_options || null)
+        .then(res => {
+          const write = (id, val) => L.logTest(block.id, String(id), "post_question", val);
+          if (res == null) return;
+
+          if (Array.isArray(res)) {
+            res.forEach((item, i) => {
+              if (item && typeof item === "object") {
+                const id  = item.id ?? item.itemId ?? item.key ?? i;
+                const val = item.response ?? item.value ?? item.answer ?? item.score ?? JSON.stringify(item);
+                write(id, val);
+              } else {
+                write(i, item);
+              }
+            });
+          } else if (typeof res === "object") {
+            Object.entries(res).forEach(([k, v]) => write(k, v));
+          } else {
+            write("result", res);
+          }
+        })
+        .catch(e => console.error("Post questions error:", e))
+        .finally(() => hide());
+    }
+
+    // Fallback mini form
+    return new Promise((resolve) => {
+      show("Quick questions", "Answer, then continue.");
+      let form = document.getElementById("study-form");
+      if (!form) {
+        form = document.createElement("div");
+        form.id = "study-form";
+        overlay.appendChild(form);
+      }
+      form.innerHTML = "";
+
+      const answers = {};
+      qs.forEach((q, idx) => {
+        const wrap = document.createElement("div"); wrap.className = "q";
+        const lbl = document.createElement("label"); lbl.textContent = q.text || `Question ${idx+1}`;
+        wrap.appendChild(lbl);
+
+        if (q.type === "single" && Array.isArray(q.options)) {
+          const opts = document.createElement("div"); opts.className = "opts";
+          q.options.forEach(opt => {
+            const b = document.createElement("button");
+            b.type = "button"; b.className = "optbtn"; b.textContent = opt;
+            b.addEventListener("click", () => {
+              opts.querySelectorAll(".optbtn").forEach(x => x.classList.remove("active"));
+              b.classList.add("active");
+              answers[q.id || `q${idx}`] = opt;
+            });
+            opts.appendChild(b);
+          });
+          wrap.appendChild(opts);
+        } else if (q.type === "scale" && Number.isFinite(q.min) && Number.isFinite(q.max)) {
+          const r = document.createElement("input");
+          const out = document.createElement("div");
+          const box = document.createElement("div");
+          box.className="rangewrap"; out.style.minWidth="32px";
+          r.type="range"; r.min=q.min; r.max=q.max; r.step=1; r.value=q.min;
+          out.textContent=String(q.min);
+          r.addEventListener("input",()=>{ out.textContent=r.value; answers[q.id || `q${idx}`]=Number(r.value); });
+          answers[q.id || `q${idx}`]=q.min;
+          box.appendChild(r); box.appendChild(out); wrap.appendChild(box);
+        } else {
+          const inp = document.createElement("input");
+          inp.type = "text"; inp.style.width="100%";
+          inp.addEventListener("input", () => { answers[q.id || `q${idx}`] = inp.value; });
+          wrap.appendChild(inp);
+        }
+        form.appendChild(wrap);
+      });
+
+      const submit = document.createElement("button");
+      submit.id = "study-submit"; submit.textContent = "Submit";
+      submit.addEventListener("click", () => {
+        Object.entries(answers).forEach(([itemId, response]) => {
+          L.logTest(block.id, itemId, "post_question", response);
+        });
+        form.remove(); hide(); resolve();
+      });
+      form.appendChild(submit);
+    });
+  }
+
+  // ================= PLAY =================
+  let lastPlayBlockId = null;
+
+  async function runPlayBlock(cfg, block){
+    return new Promise(resolve=>{
+      const size = block.board_size || cfg?.global?.board_size || 4;
+      wipeGameDOM(size);
+
+      const gm = new GameManager(size, KeyboardInputManager, HTMLActuator, NoStorageManager);
+
+      L.setContext({ participant_id:"P001", mode_id:block.id });
+      L.newSession(block.id);
+      const SESSION_ID = (typeof L.getContext === "function" ? L.getContext().session_id : null);
+
+      const goalTile=Number.isFinite(Number(block.goal_tile))?Number(block.goal_tile):null;
+      const goalLine=goalTile?`Goal: Reach ${goalTile}`:"Press arrow keys to play";
+
+      // Popup
+      show(block.description||block.id, goalLine);
+      const ov=document.getElementById("study-overlay");
+      if(ov) ov.style.pointerEvents="none";
+      setTimeout(()=>{ hide(); if(ov) ov.style.pointerEvents=""; },1200);
+
+      // HUD
+      setGoalBadge(goalLine);
+      setTimerBadge("");
+
+      let ended=false, cd=null, microTimer=null;
+
+      // move logging
+      let lastMoveAt=performance.now();
+      let inputs_total=0;
+      const dirName=d=>({0:"up",1:"right",2:"down",3:"left"})[d]??String(d);
+
+      gm.inputManager.on("move", (dir) => {
+        const now = performance.now();
+        const latencyMs = Math.max(1, Math.round(now - lastMoveAt));
+        lastMoveAt = now;
+        inputs_total += 1;
+
+        const n = gm.size;
+        const gridOut = Array.from({length:n}, (_, y) =>
+          Array.from({length:n}, (_, x) => {
+            const cell = gm.grid.cells[x][y];
+            return cell ? cell.value : 0;
+          })
+        );
+
+        L.logMove(inputs_total, dirName(dir), gm.score, latencyMs, gridOut);
+      });
+
+      if (!applyStartGrid(gm, block.start_state)) {
+        prefillBoard(gm, block.start_state);
+      }
+
+      const spawnRates=block?.spawn?.rates;
+      const origAdd=gm.addRandomTile.bind(gm);
+      gm.addRandomTile=function(){
+        if(!gm.grid.cellsAvailable()) return origAdd();
+        const cell=gm.grid.randomAvailableCell();
+        if(spawnRates){ gm.grid.insertTile(new Tile(cell,pickWeighted(spawnRates))); return; }
+        origAdd();
+      };
+
+      // Timer badge
+      if((block.stop?.kind==="time"&&block.stop?.value)||block.timer?.hard_cap_sec){
+        const secs=Number(block.timer?.hard_cap_sec||block.stop?.value||0);
+        cd=startCountdown(secs,()=>stop("time_done"));
+      }
+
+      // WIN logic without locking moves
+      const oldAct=gm.actuator.actuate.bind(gm.actuator);
+      gm.actuator.actuate=(grid,meta)=>{
+        oldAct(grid,meta);
+        if (ended) return;
+
+        if(meta?.terminated){
+          stop(meta.over ? "game_over" : "won");
+          return;
+        }
+
+        if(Number.isFinite(goalTile)){
+          let maxNow=0;
+          for(let x=0;x<gm.size;x++){
+            for(let y=0;y<gm.size;y++){
+              const c=gm.grid.cells[x][y];
+              if(c) maxNow=Math.max(maxNow,c.value);
+            }
+          }
+          if(maxNow>=goalTile){
+            show("Goal reached",`Reached ${goalTile}`);
+            setTimeout(()=>stop("goal_reached"),500);
+          }
+        }
+      };
+
+      // Oddball flashes (optional)
+      const enableMicro=(block.id==="oddball_mode");
+      let microStarted=false, microCount=0;
+      const MICRO_LIMIT=2;
+      function fireFlashOnce(){
+        if (!enableMicro || microCount >= MICRO_LIMIT || ended) return;
+        const el=getRandomTileEl(); if(el){ flashTileEl(el,700); }
+        microCount += 1;
+        if (microCount < MICRO_LIMIT) {
+          const gap = 12000 + Math.floor(Math.random()*8000);
+          microTimer = setTimeout(fireFlashOnce, gap);
+        }
+      }
+      setTimeout(()=>{ if(enableMicro && !microStarted && !ended){ microStarted=true; fireFlashOnce(); } },3000);
+
+      function finalizeAndResolve(){
+        lastPlayBlockId = block.id;
+        setTimeout(()=>{
+          const rows = L.moveRowsForExport()
+            .filter(r => r.mode_id === block.id && (!SESSION_ID || r.session_id === SESSION_ID));
+          resolve(rows);
+        },80);
+      }
+
+      function stop(){
+        if (ended) return;
+        ended = true;
+        try { cd?.stop?.(); } catch(_){}
+        try { clearTimeout(microTimer); } catch(_){}
+        hide();
+        setTimerBadge("");
+
+        const p = (block?.post_questions && block.post_questions.length)
+          ? askPostQuestions(block)
+          : Promise.resolve();
+
+        p.then(finalizeAndResolve);
+      }
+    });
+  }
+
+  // ================= TESTS =================
+  async function runTestsBlock(cfg, block){
+    L.setContext({ participant_id:"P001", mode_id:block.id });
+    L.newSession(block.id);
+    const TEST_SESSION_ID = (typeof L.getContext === "function" ? L.getContext().session_id : null);
+    try { await Tests.runTests(block.tests||[], block.id, block.tests_options||null); }
+    catch (e) { console.error("TestsUI.runTests error:", e); }
+
+    return L.testRowsForExport()
+      .filter(r => r.mode_id === block.id && (!TEST_SESSION_ID || r.session_id === TEST_SESSION_ID));
   }
 
   // ================= RUNNER =================
@@ -236,8 +509,8 @@ document.addEventListener("DOMContentLoaded", () => {
     for(let i=0;i<sequence.length;i++){
       const id=sequence[i],b=map[id]; if(!b) continue;
 
-      const label = preBlockLabel(id,b.type);   // ✅ FIXED
-      const PREBLOCK_MS = 1200;                 // 1.2 seconds
+      const label = preBlockLabel(id,b.type);
+      const PREBLOCK_MS = 1200;
       if (label) {
         show(label.title, label.body);
         await sleep(PREBLOCK_MS);
